@@ -1,25 +1,29 @@
-import jwt
+from datetime import datetime
 from hashlib import sha256
 from secrets import token_urlsafe
-from datetime import datetime
 
+import jwt
 from fastapi import Security
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import HTTPException
-from .models import JwtPayload
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pwdlib import PasswordHash
 from pydantic import ValidationError
 
-from .. models import user
 from . import config
+from .models import JwtPayload
+from ..models import user
 
 
-def get_refresh_token():
+def create_refresh_token():
     return token_urlsafe(32)
 
 
+def get_refresh_token_hash(token: str):
+    return sha256(token.encode(encoding="utf-8")).hexdigest()
+
+
 def check_refresh_token(token: str, hashed: str):
-    return sha256(token.encode(encoding="utf-8")).hexdigest() == hashed
+    return get_refresh_token_hash(token) == hashed
 
 
 password_hasher = PasswordHash.recommended()

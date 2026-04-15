@@ -27,11 +27,12 @@ class NewUser(BaseUser):
             raise ValueError("Password must contain digits")
         if not chars & LOWERCASE_LETTERS:
             raise ValueError("Password must contain lowercase latin letters")
+        return value
 
 
 class User(BaseUser, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    password_hash: str
+    password_hash: str = Field(exclude=True)
 
 
 class OpaqueToken(SQLModel, table=True):
@@ -43,4 +44,18 @@ class OpaqueToken(SQLModel, table=True):
 
 class LoginUser(SQLModel):
     email: EmailStr = Field(max_length=254)
-    password: str = Field(max_length=64)
+    password: str = Field(min_length=8, max_length=64)
+
+
+class NewTokens(SQLModel):
+    access_token: str | None = Field(alias="accessToken", default=None)
+    refresh_token: str | None = Field(alias="refreshToken", default=None)
+
+
+class UserResponse(SQLModel):
+    user: User
+    tokens: NewTokens
+
+
+class ExistingRefreshToken(SQLModel):
+    token: str
