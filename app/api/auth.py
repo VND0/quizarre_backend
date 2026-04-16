@@ -33,7 +33,7 @@ def clear_expired_tokens(session: Session):
     if refresh_token_issues_counter % 500:
         return
 
-    expired_tokens = session.exec(select(OpaqueToken).where(OpaqueToken.expiration > datetime.now())).all()
+    expired_tokens = session.exec(select(OpaqueToken).where(OpaqueToken.expiration < datetime.now())).all()
     for token in expired_tokens:
         session.delete(token)
     if expired_tokens:
@@ -95,7 +95,7 @@ def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, ba
 
     if not existing_token:
         raise HTTPException(404)
-    if existing_token.expiration > datetime.now():
+    if existing_token.expiration < datetime.now():
         raise HTTPException(401)
 
     related_user = session.exec(select(User).where(User.id == existing_token.user_id)).one()
@@ -117,7 +117,7 @@ def get_access_token(session: SessionDep, refresh_token: ExistingRefreshToken):
 
     if not opaque_token:
         raise HTTPException(404)
-    if opaque_token.expiration > datetime.now():
+    if opaque_token.expiration < datetime.now():
         raise HTTPException(401)
 
     related_user = session.exec(select(User).where(User.id == opaque_token.user_id)).one()
