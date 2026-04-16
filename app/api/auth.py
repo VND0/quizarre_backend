@@ -46,7 +46,6 @@ async def register(session: SessionDep, new_user: NewUser, background_tasks: Bac
     if existing_user:
         raise HTTPException(409)
 
-    print(new_user.password)
     password_hash = get_password_hash(new_user.password)
     user = User(
         **new_user.model_dump(),
@@ -62,7 +61,7 @@ async def register(session: SessionDep, new_user: NewUser, background_tasks: Bac
     background_tasks.add_task(clear_expired_tokens, session)
 
     return UserResponse(
-        user=user.model_dump(),
+        user=User.model_validate(user),
         tokens=NewTokens(
             accessToken=access_token,
             refreshToken=refresh_token,
@@ -81,7 +80,7 @@ async def login(session: SessionDep, login_user: LoginUser, background_tasks: Ba
     session.commit()
     background_tasks.add_task(clear_expired_tokens, session)
     return UserResponse(
-        user=user.model_dump(),
+        user=User.model_validate(user),
         tokens=NewTokens(
             accessToken=access_token,
             refreshToken=refresh_token,
