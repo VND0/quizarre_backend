@@ -6,7 +6,13 @@ from ..core.security import verify_jwt
 from ..db.db import SessionDep
 from ..models.user import User
 
-router = APIRouter(prefix="/api/users", tags=["Users"])
+router = APIRouter(
+    prefix="/api/users",
+    tags=["Users"],
+    responses={
+        401: {"description": "JWT token is not given or expired or malformed"}
+    }
+)
 
 
 @router.get("/me", response_model=User)
