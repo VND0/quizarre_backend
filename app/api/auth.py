@@ -12,6 +12,11 @@ from ..models.user import NewUser, User, UserResponse, OpaqueToken, LoginUser, E
 router = APIRouter(prefix="/api", tags=["Auth"])
 refresh_token_issues_counter = 0
 
+refresh_token_responses = {
+    404: {"description": "Token not found"},
+    401: {"description": "Token expired. You have to login with email and password again."}
+}
+
 
 def issue_refresh_token(user: User, session: Session, do_commit: bool = False):
     refresh_token = create_refresh_token()
@@ -40,7 +45,13 @@ def clear_expired_tokens(session: Session):
         session.commit()
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    responses={
+        409: {"description": "User with this email already exists"}
+    }
+)
 async def register(session: SessionDep, new_user: NewUser, background_tasks: BackgroundTasks):
     existing_user = session.exec(select(User).where(User.email == new_user.email)).one_or_none()
     if existing_user:
@@ -69,7 +80,13 @@ async def register(session: SessionDep, new_user: NewUser, background_tasks: Bac
     )
 
 
-@router.post("/login", response_model=UserResponse)
+@router.post(
+    "/login",
+    response_model=UserResponse,
+    responses={
+        404: {"description": "Email or password is incorrect"}
+    }
+)
 async def login(session: SessionDep, login_user: LoginUser, background_tasks: BackgroundTasks):
     user: User | None = session.exec(select(User).where(User.email == login_user.email)).one_or_none()
     if not (user and verify_password(login_user.password, user.password_hash)):
@@ -88,7 +105,11 @@ async def login(session: SessionDep, login_user: LoginUser, background_tasks: Ba
     )
 
 
-@router.post("/issue-refresh-token", response_model=NewTokens)
+@router.post(
+    "/issue-refresh-token",
+    response_model=NewTokens,
+    responses=refresh_token_responses
+)
 def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, background_tasks: BackgroundTasks):
     existing_token: OpaqueToken | None = session.exec(
         select(OpaqueToken).where(OpaqueToken.hash == get_refresh_token_hash(given_token.token))).one_or_none()
@@ -110,7 +131,11 @@ def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, ba
     )
 
 
-@router.post("/issue-access-token")
+@router.post(
+    "/issue-access-token",
+    response_model=NewTokens,
+    responses=refresh_token_responses
+)
 def get_access_token(session: SessionDep, refresh_token: ExistingRefreshToken):
     opaque_token: OpaqueToken | None = session.exec(
         select(OpaqueToken).where(OpaqueToken.hash == get_refresh_token_hash(refresh_token.token))).one_or_none()

@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .db.db import create_db_and_tables
 from .api import auth
 from .api import users
+from .db.db import create_db_and_tables
 
 
 @asynccontextmanager
@@ -17,6 +17,18 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(users.router)
 
-@app.get("/")
-async def index():
+
+@app.get(
+    "/",
+    responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"status": "ok"}
+                }
+            }
+        },
+    }
+)
+async def ping():
     return {"status": "ok"}

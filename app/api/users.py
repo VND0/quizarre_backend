@@ -9,7 +9,7 @@ from ..models.user import User
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
-@router.get("/me")
+@router.get("/me", response_model=User)
 def get_own_info(
         session: SessionDep,
         jwt_payload: JwtPayload = Depends(verify_jwt)
