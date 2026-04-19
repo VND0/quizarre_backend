@@ -39,7 +39,7 @@ class OpaqueToken(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid4, primary_key=True)
     hash: str
     expiration: datetime.datetime
-    user_id: uuid.UUID = Field(default=None, foreign_key="user.id")
+    user_id: uuid.UUID = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
 
 
 class LoginUser(SQLModel):

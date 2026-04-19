@@ -51,3 +51,19 @@ def edit_user_info(
     session.commit()
     session.refresh(user)
     return user
+
+
+@router.delete("/me", response_model=User)
+def delete_user(
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    user = session.exec(select(User).where(User.id == jwt_payload.sub)).one()
+    user_dump = user.model_dump()
+    password_hash = user.password_hash
+    session.delete(user)
+    session.commit()
+    return User(
+        **user_dump,
+        password_hash=password_hash
+    )
