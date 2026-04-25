@@ -19,13 +19,13 @@ class BaseQuiz(SQLModel):
     title: str = Field(min_length=3, max_length=150)
     description: str = Field(min_length=3, max_length=2000)
 
-    time_to_answer: int = Field(ge=1, le=31536000)  # 31536000 is 365 days in seconds
-    show_answer_immediately: bool
-    require_fullscreen: bool
-    shuffle_questions: bool
-    encourage_speed: bool
+    time_to_answer: int = Field(ge=1, le=31536000, alias="timeToAnswer")  # 31536000 is 365 days in seconds
+    show_answer_immediately: bool = Field(alias="showAnswerImmediately")
+    require_fullscreen: bool = Field(alias="requireFullscreen")
+    shuffle_questions: bool = Field(alias="shuffleQuestions")
+    encourage_speed: bool = Field(alias="encourageSpeed")
 
-    user_id: UUID | None = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+    user_id: UUID | None = Field(default=None, foreign_key="user.id", ondelete="CASCADE", alias="userId")
 
 
 class Quiz(BaseQuiz, table=True):
@@ -38,10 +38,10 @@ class BaseQuestion(SQLModel):
     text: str = Field(min_length=3, max_length=3000)
     description: str | None = Field(min_length=3, max_length=5000, default=None)
     type: QuestionTypes
-    order_index: int = Field(le=0)
+    order_index: int = Field(le=0, alias="orderIndex")
     points: float = Field(le=0)
 
-    quiz_id: UUID | None = Field(default=None, foreign_key="quiz.id", ondelete="CASCADE")
+    quiz_id: UUID | None = Field(default=None, foreign_key="quiz.id", ondelete="CASCADE", alias="quizId")
 
 
 class Question(BaseQuestion, table=True):
@@ -54,10 +54,10 @@ class Question(BaseQuestion, table=True):
 class BaseTestAnswer(SQLModel):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     text: str = Field(min_length=1, max_length=255)
-    order_index: int = Field(le=0)
-    is_correct: bool
+    order_index: int = Field(le=0, alias="orderIndex")
+    is_correct: bool = Field(alias="isCorrect")
 
-    question_id: UUID | None = Field(default=None, foreign_key="question.id", ondelete="CASCADE")
+    question_id: UUID | None = Field(default=None, foreign_key="question.id", ondelete="CASCADE", alias="questionId")
 
 
 class TestAnswer(BaseTestAnswer, table=True):
@@ -68,7 +68,7 @@ class BaseTextAnswer(SQLModel):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     text: str = Field(min_length=1, max_length=3000)
 
-    question_id: UUID | None = Field(default=None, foreign_key="question.id", ondelete="CASCADE")
+    question_id: UUID | None = Field(default=None, foreign_key="question.id", ondelete="CASCADE", alias="questionId")
 
 
 class TextAnswer(BaseTextAnswer, table=True):
@@ -76,8 +76,8 @@ class TextAnswer(BaseTextAnswer, table=True):
 
 
 class QuestionResponse(BaseQuestion):
-    test_answers: list[BaseTestAnswer]
-    text_answers: list[BaseTextAnswer]
+    test_answers: list[BaseTestAnswer] = Field(alias="testAnswers")
+    text_answers: list[BaseTextAnswer] = Field(alias="textAnswers")
 
 
 class FullQuizResponse(BaseQuiz):
