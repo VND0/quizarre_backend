@@ -1,7 +1,11 @@
 from enum import Enum
 from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class QuestionTypes(Enum):
@@ -21,6 +25,8 @@ class Quiz(SQLModel, table=True):
     shuffle_questions: bool
     encourage_speed: bool
 
+    user_id: UUID | None = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+    user: "User" = Relationship(back_populates="quizzes")
     questions: list["Question"] = Relationship(back_populates="quiz")
 
 

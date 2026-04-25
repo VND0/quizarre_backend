@@ -1,11 +1,14 @@
 import datetime
 import uuid
 from string import ascii_uppercase, ascii_lowercase
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 from uuid import uuid4, UUID
 
 from pydantic import EmailStr, AfterValidator
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from .quizzes import Quiz
 
 DIGITS = set("0123456789")
 UPPERCASE_LETTERS = set(ascii_uppercase)
@@ -35,6 +38,7 @@ class User(BaseUser, table=True):
     password_hash: str = Field(exclude=True)
 
     opaque_tokens: list["OpaqueToken"] = Relationship(back_populates="user")
+    quizzes: list["Quiz"] = Relationship(back_populates="user")
 
 
 class OpaqueToken(SQLModel, table=True):
