@@ -5,7 +5,7 @@ from typing import Annotated
 from uuid import uuid4, UUID
 
 from pydantic import EmailStr, AfterValidator
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 
 DIGITS = set("0123456789")
 UPPERCASE_LETTERS = set(ascii_uppercase)
@@ -34,12 +34,16 @@ class User(BaseUser, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     password_hash: str = Field(exclude=True)
 
+    opaque_tokens: list["OpaqueToken"] = Relationship(back_populates="user")
+
 
 class OpaqueToken(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid4, primary_key=True)
     hash: str
     expiration: datetime.datetime
-    user_id: uuid.UUID = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+
+    user: User = Relationship(back_populates="opaque_tokens")
 
 
 class LoginUser(SQLModel):

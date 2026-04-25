@@ -20,12 +20,10 @@ refresh_token_responses = {
 
 def issue_refresh_token(user: User, session: Session, do_commit: bool = False):
     refresh_token = create_refresh_token()
-    opaque_token = OpaqueToken(
+    user.opaque_tokens.append(OpaqueToken(
         hash=get_refresh_token_hash(refresh_token),
         expiration=datetime.now() + REFRESH_TOKEN_EXPIRATION,
-        user_id=user.id
-    )
-    session.add(opaque_token)
+    ))
     if do_commit:
         session.commit()
     return refresh_token
@@ -119,10 +117,8 @@ def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, ba
     if existing_token.expiration < datetime.now():
         raise HTTPException(401)
 
-    related_user = session.exec(select(User).where(User.id == existing_token.user_id)).one()
-
-    new_refresh_token = issue_refresh_token(related_user, session, do_commit=True)
-    new_access_token = create_access_token(related_user)
+    new_refresh_token = issue_refresh_token(existing_token.user, session, do_commit=True)
+    new_access_token = create_access_token(existing_token.user)
 
     background_tasks.add_task(clear_expired_tokens, session)
     return NewTokens(
@@ -145,8 +141,4 @@ def get_access_token(session: SessionDep, refresh_token: ExistingRefreshToken):
     if opaque_token.expiration < datetime.now():
         raise HTTPException(401)
 
-    related_user = session.exec(select(User).where(User.id == opaque_token.user_id)).one()
-
-    return NewTokens(
-        accessToken=create_access_token(related_user)
-    )
+    return NewTokens(accessToken=create_access_token(opaque_token.user))
