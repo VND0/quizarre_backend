@@ -66,5 +66,11 @@ class UserPatch(SQLModel):
     name: str | None = Field(min_length=3, max_length=72, default=None)
 
 
+class PasswordChangeRequest(SQLModel):
+    old_password: str = Field(alias="oldPassword")
+    new_password: Annotated[str, AfterValidator(validate_password)] = Field(min_length=8, max_length=64,
+                                                                            alias="newPassword")
+
+
 class ExistingRefreshToken(SQLModel):
     token: str
