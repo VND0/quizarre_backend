@@ -64,8 +64,6 @@ class UserResponse(SQLModel):
 class UserPatch(SQLModel):
     email: EmailStr | None = Field(max_length=254, default=None)
     name: str | None = Field(min_length=3, max_length=72, default=None)
-    password: Annotated[str, AfterValidator(validate_password)] | None = Field(min_length=8, max_length=64,
-                                                                               default=None)
 
 
 class ExistingRefreshToken(SQLModel):

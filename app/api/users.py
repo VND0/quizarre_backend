@@ -42,11 +42,6 @@ def edit_user_info(
         if user_with_new_email:
             raise HTTPException(409, "New email is busy")
 
-    if update_data.password is not None:
-        new_password_hash = get_password_hash(update_data.password)
-        update_data.password = None
-        user.password_hash = new_password_hash
-
     user.sqlmodel_update(update_data.model_dump(exclude_none=True))
     session.commit()
     session.refresh(user)
