@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
 
 from ..core.models import JwtPayload
-from ..core.security import verify_jwt, get_password_hash
+from ..core.security import verify_jwt, verify_password, get_password_hash
 from ..db.db import SessionDep
-from ..models.user import User, UserPatch
+from ..models.user import User, UserPatch, PasswordChangeRequest, DeleteUserRequest
 
 router = APIRouter(
     prefix="/api/users",
@@ -42,23 +42,52 @@ def edit_user_info(
         if user_with_new_email:
             raise HTTPException(409, "New email is busy")
 
-    if update_data.password is not None:
-        new_password_hash = get_password_hash(update_data.password)
-        update_data.password = None
-        user.password_hash = new_password_hash
-
     user.sqlmodel_update(update_data.model_dump(exclude_none=True))
     session.commit()
     session.refresh(user)
     return user
 
 
-@router.delete("/me", response_model=User)
+@router.patch(
+    "/me/password",
+    status_code=204,
+    responses={
+        403: {"description": "Old password is incorrect"},
+        400: {"description": "New password is the same"}
+    }
+)
+def change_password(
+        session: SessionDep,
+        request_data: PasswordChangeRequest,
+        jwt_payload: JwtPayload = Depends(verify_jwt)
+):
+    if request_data.old_password == request_data.new_password:
+        raise HTTPException(400)
+
+    user = session.exec(select(User).where(User.id == jwt_payload.sub)).one()
+    if not verify_password(request_data.old_password, user.password_hash):
+        raise HTTPException(403)
+
+    user.password_hash = get_password_hash(request_data.new_password)
+    session.commit()
+
+
+@router.delete(
+    "/me",
+    response_model=User,
+    responses={
+        403: {"description": "Password is incorrect"}
+    }
+)
 def delete_user(
         session: SessionDep,
+        request_data: DeleteUserRequest,
         jwt_payload: JwtPayload = Depends(verify_jwt),
 ):
     user = session.exec(select(User).where(User.id == jwt_payload.sub)).one()
+    if not verify_password(request_data.password, user.password_hash):
+        raise HTTPException(403)
+
     user_dump = user.model_dump()
     password_hash = user.password_hash
     session.delete(user)
