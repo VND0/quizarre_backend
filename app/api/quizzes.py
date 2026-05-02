@@ -20,11 +20,11 @@ def prepare_quiz_response(quiz: Quiz) -> FullQuizResponse:
     for q in quiz.questions:
         test_answers = []
         for ta in q.test_answers:
-            test_answers.append(BaseTestAnswer(**ta.model_dump(by_alias=True)))
+            test_answers.append(BaseTestAnswer.model_validate({**ta.model_dump(by_alias=True)}))
 
         text_answer = []
         for ta in q.text_answers:
-            text_answer.append(BaseTextAnswer(**ta.model_dump(by_alias=True)))
+            text_answer.append(BaseTextAnswer.model_validate({**ta.model_dump(by_alias=True)}))
 
         questions.append(QuestionResponse.model_validate({
             **q.model_dump(exclude={"test_answers", "text_answers"}, by_alias=True),
@@ -73,21 +73,21 @@ async def upload_quiz(
         text_answers = []
 
         for ta in q.test_answers:
-            test_answers.append(TestAnswer(**ta.model_dump()))
+            test_answers.append(TestAnswer.model_validate({**ta.model_dump(by_alias=True)}))
         for ta in q.text_answers:
-            text_answers.append(TextAnswer(**ta.model_dump()))
+            text_answers.append(TextAnswer.model_validate({**ta.model_dump(by_alias=True)}))
 
-        questions.append(Question(
-            **q.model_dump(exclude={"test_answers", "text_answers"}),
-            test_answers=test_answers,
-            text_answers=text_answers,
-        ))
+        questions.append(Question.model_validate({
+            **q.model_dump(exclude={"test_answers", "text_answers"}, by_alias=True),
+            "testAnswers": [ta.model_dump(by_alias=True) for ta in test_answers],
+            "textAnswers": [ta.model_dump(by_alias=True) for ta in text_answers],
+        }))
 
-    quiz = Quiz(
-        **quiz_upload.model_dump(exclude={"questions"}),
-        user_id=jwt_payload.sub,
-        questions=questions
-    )
+    quiz = Quiz.model_validate({
+        **quiz_upload.model_dump(exclude={"questions"}, by_alias=True),
+        "userId": jwt_payload.sub,
+        "questions": [q.model_dump(by_alias=True) for q in questions],
+    })
     session.add(quiz)
     session.commit()
     return prepare_quiz_response(quiz)
