@@ -72,5 +72,9 @@ class PasswordChangeRequest(SQLModel):
                                                                             alias="newPassword")
 
 
+class DeleteUserRequest(SQLModel):
+    password: Annotated[str, AfterValidator(validate_password)] = Field(min_length=8, max_length=64)
+
+
 class ExistingRefreshToken(SQLModel):
     token: str

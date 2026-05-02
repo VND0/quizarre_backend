@@ -4,7 +4,7 @@ from sqlmodel import select
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt, verify_password, get_password_hash
 from ..db.db import SessionDep
-from ..models.user import User, UserPatch, PasswordChangeRequest
+from ..models.user import User, UserPatch, PasswordChangeRequest, DeleteUserRequest
 
 router = APIRouter(
     prefix="/api/users",
@@ -72,12 +72,22 @@ def change_password(
     session.commit()
 
 
-@router.delete("/me", response_model=User)
+@router.delete(
+    "/me",
+    response_model=User,
+    responses={
+        403: {"description": "Password is incorrect"}
+    }
+)
 def delete_user(
         session: SessionDep,
+        request_data: DeleteUserRequest,
         jwt_payload: JwtPayload = Depends(verify_jwt),
 ):
     user = session.exec(select(User).where(User.id == jwt_payload.sub)).one()
+    if not verify_password(request_data.password, user.password_hash):
+        raise HTTPException(403)
+
     user_dump = user.model_dump()
     password_hash = user.password_hash
     session.delete(user)
