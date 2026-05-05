@@ -6,8 +6,9 @@ from sqlmodel import select
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
 from ..db.db import SessionDep
-from ..models.quizzes import Quiz, FullQuizResponse, QuestionResponse, BaseTestAnswer, BaseTextAnswer, QuizUpload, \
-    TestAnswer, TextAnswer, Question, QuizData
+from ..models.answers import BaseTestAnswer, BaseTextAnswer, TestAnswer, TextAnswer
+from ..models.questions import QuestionResponse, Question
+from ..models.quizzes import Quiz, FullQuizResponse, QuizUpload, QuizData
 
 router = APIRouter(
     prefix="/api/quizzes",
