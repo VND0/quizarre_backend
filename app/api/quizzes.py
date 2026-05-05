@@ -46,7 +46,14 @@ async def get_quizzes(
     return session.exec(select(Quiz).where(Quiz.user_id == jwt_payload.sub)).all()
 
 
-@router.get("/{quiz_id}", response_model=FullQuizResponse)
+@router.get(
+    "/{quiz_id}",
+    response_model=FullQuizResponse,
+    responses={
+        404: {"description": "Quiz not found"},
+        403: {"description": "This quiz doesn't belong to you"}
+    }
+)
 async def get_quiz_data(
         session: SessionDep,
         quiz_id: uuid.UUID,
