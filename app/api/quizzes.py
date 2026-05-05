@@ -7,7 +7,7 @@ from ..core.models import JwtPayload
 from ..core.security import verify_jwt
 from ..db.db import SessionDep
 from ..models.quizzes import Quiz, FullQuizResponse, QuestionResponse, BaseTestAnswer, BaseTextAnswer, QuizUpload, \
-    TestAnswer, TextAnswer, Question
+    TestAnswer, TextAnswer, Question, QuizData
 
 router = APIRouter(
     prefix="/api/quizzes",
@@ -101,3 +101,49 @@ async def upload_quiz(
     session.add(quiz)
     session.commit()
     return prepare_quiz_response(quiz)
+
+
+@router.put(
+    "/{quiz_id}",
+    response_model=FullQuizResponse,
+    responses={
+        404: {"description": "Quiz not found"},
+        403: {"description": "This quiz doesn't belong to you"}
+    }
+)
+async def update_quiz_data(
+        quiz_id: uuid.UUID,
+        quiz_data: QuizData,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    quiz: Quiz | None = session.exec(select(Quiz).where(Quiz.id == quiz_id)).one_or_none()
+    if quiz is None:
+        raise HTTPException(404)
+    if quiz.user_id != jwt_payload.sub:
+        raise HTTPException(403)
+
+    quiz.sqlmodel_update(quiz_data)
+    session.commit()
+    return prepare_quiz_response(quiz)
+
+
+@router.delete(
+    "/{quiz_id}",
+    response_model=FullQuizResponse,
+)
+async def delete_quiz(
+        quiz_id: uuid.UUID,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    quiz: Quiz | None = session.exec(select(Quiz).where(Quiz.id == quiz_id)).one_or_none()
+    if quiz is None:
+        raise HTTPException(404)
+    if quiz.user_id != jwt_payload.sub:
+        raise HTTPException(403)
+
+    response = prepare_quiz_response(quiz)
+    session.delete(quiz)
+    session.commit()
+    return response
