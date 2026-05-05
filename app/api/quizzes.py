@@ -87,17 +87,25 @@ async def upload_quiz(
         for ta in q.text_answers:
             text_answers.append(TextAnswer.model_validate({**ta.model_dump(by_alias=True)}))
 
-        questions.append(Question.model_validate({
+        new_question = Question.model_validate({
             **q.model_dump(exclude={"test_answers", "text_answers"}, by_alias=True),
-            "testAnswers": [ta.model_dump(by_alias=True) for ta in test_answers],
-            "textAnswers": [ta.model_dump(by_alias=True) for ta in text_answers],
-        }))
+            "testAnswers": [],
+            "textAnswers": [],
+        })
+        new_question.test_answers.extend(
+            [TestAnswer.model_validate(ta.model_dump(by_alias=True)) for ta in test_answers]
+        )
+        new_question.text_answers.extend(
+            [TextAnswer.model_validate(ta.model_dump(by_alias=True)) for ta in text_answers]
+        )
+        questions.append(new_question)
 
     quiz = Quiz.model_validate({
         **quiz_upload.model_dump(exclude={"questions"}, by_alias=True),
         "userId": jwt_payload.sub,
-        "questions": [q.model_dump(by_alias=True) for q in questions],
+        "questions": [],
     })
+    quiz.questions.extend(questions)
     session.add(quiz)
     session.commit()
     return prepare_quiz_response(quiz)
