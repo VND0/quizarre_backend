@@ -16,7 +16,7 @@ router = APIRouter(
 
 
 @router.get("/me", response_model=User, )
-def get_own_info(
+async def get_own_info(
         session: SessionDep,
         jwt_payload: JwtPayload = Depends(verify_jwt)
 ):
@@ -30,7 +30,7 @@ def get_own_info(
         409: {"description": "New email is busy"},
     }
 )
-def edit_user_info(
+async def edit_user_info(
         session: SessionDep,
         update_data: UserPatch,
         jwt_payload: JwtPayload = Depends(verify_jwt)
@@ -56,7 +56,7 @@ def edit_user_info(
         400: {"description": "New password is the same"}
     }
 )
-def change_password(
+async def change_password(
         session: SessionDep,
         request_data: PasswordChangeRequest,
         jwt_payload: JwtPayload = Depends(verify_jwt)
@@ -79,7 +79,7 @@ def change_password(
         403: {"description": "Password is incorrect"}
     }
 )
-def delete_user(
+async def delete_user(
         session: SessionDep,
         request_data: DeleteUserRequest,
         jwt_payload: JwtPayload = Depends(verify_jwt),

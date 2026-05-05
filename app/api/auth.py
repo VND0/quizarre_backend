@@ -108,7 +108,7 @@ async def login(session: SessionDep, login_user: LoginUser, background_tasks: Ba
     response_model=NewTokens,
     responses=refresh_token_responses
 )
-def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, background_tasks: BackgroundTasks):
+async def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, background_tasks: BackgroundTasks):
     existing_token: OpaqueToken | None = session.exec(
         select(OpaqueToken).where(OpaqueToken.hash == get_refresh_token_hash(given_token.token))).one_or_none()
 
@@ -132,7 +132,7 @@ def get_refresh_token(session: SessionDep, given_token: ExistingRefreshToken, ba
     response_model=NewTokens,
     responses=refresh_token_responses
 )
-def get_access_token(session: SessionDep, refresh_token: ExistingRefreshToken):
+async def get_access_token(session: SessionDep, refresh_token: ExistingRefreshToken):
     opaque_token: OpaqueToken | None = session.exec(
         select(OpaqueToken).where(OpaqueToken.hash == get_refresh_token_hash(refresh_token.token))).one_or_none()
 
