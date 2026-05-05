@@ -11,7 +11,10 @@ from ..models.quizzes import Quiz, FullQuizResponse, QuestionResponse, BaseTestA
 
 router = APIRouter(
     prefix="/api/quizzes",
-    tags=["Quizzes"]
+    tags=["Quizzes"],
+    responses={
+        401: {"description": "JWT token is not given or expired or malformed"}
+    }
 )
 
 
