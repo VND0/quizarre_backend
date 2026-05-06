@@ -5,6 +5,7 @@ from sqlmodel import select
 
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
+from ..core.utils import validate_questions_indexes, validate_answers
 from ..db.db import SessionDep
 from ..models.questions import Question, QuestionResponse, QuestionData, QuestionUpload
 from ..models.quizzes import Quiz
@@ -95,6 +96,12 @@ async def edit_question_data(
         raise HTTPException(403)
 
     question.sqlmodel_update(update_data)
+
+    try:
+        validate_questions_indexes(question.quiz)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
     session.commit()
     return prepare_question_response(question)
 
@@ -163,7 +170,14 @@ async def add_question(
     new_question.text_answers.extend(
         [TextAnswer.model_validate(ta.model_dump(by_alias=True)) for ta in text_answers]
     )
-    quiz.questions.append(new_question)
+
+    try:
+        validate_answers(new_question)
+        quiz.questions.append(new_question)
+        validate_questions_indexes(quiz)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
     session.commit()
     session.refresh(new_question)
     return prepare_question_response(new_question)
