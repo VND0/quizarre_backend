@@ -53,7 +53,11 @@ def prepare_question_response(question: Question) -> QuestionResponse:
 
 @router.get(
     "/{question_id}",
-    response_model=QuestionResponse
+    response_model=QuestionResponse,
+    responses={
+        404: {"description": "Question not found"},
+        403: {"description": "This question doesn't belong to you"}
+    }
 )
 async def get_question(
         question_id: uuid.UUID,
