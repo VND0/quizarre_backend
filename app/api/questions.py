@@ -19,7 +19,7 @@ router = APIRouter(
 
 
 @router.get(
-    "/{quiz_id}",
+    "",
     response_model=list[Question],
     responses={
         404: {"description": "Quiz not found"},
