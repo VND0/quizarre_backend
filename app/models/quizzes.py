@@ -5,7 +5,7 @@ from pydantic import model_validator
 from sqlmodel import SQLModel, Field, Relationship
 
 from .questions import Question, QuestionResponse, QuestionUpload
-from ..core.utils import validate_indexes_consistence
+from ..core.utils import validate_questions_indexes
 
 if TYPE_CHECKING:
     from .user import User
@@ -45,12 +45,5 @@ class QuizUpload(QuizData):
 
     @model_validator(mode="after")
     def validate_quiz(self) -> Self:
-        # We validate that order indexes of the questions are unique and consistent
-        question_indexes = set()
-        for question in self.questions:
-            if question.order_index in question_indexes:
-                raise ValueError("Order indexes of the questions are repeating")
-            question_indexes.add(question.order_index)
-
-        validate_indexes_consistence(question_indexes)
+        validate_questions_indexes(self)
         return self
