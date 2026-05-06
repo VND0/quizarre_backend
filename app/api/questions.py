@@ -96,3 +96,28 @@ async def edit_question_data(
     question.sqlmodel_update(update_data)
     session.commit()
     return prepare_question_response(question)
+
+
+@router.delete(
+    "/{question_id}",
+    response_model=QuestionResponse,
+    responses={
+        404: {"description": "Question not found"},
+        403: {"description": "This question doesn't belong to you"}
+    }
+)
+async def delete_question(
+        question_id: uuid.UUID,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    question: Question | None = session.exec(select(Question).where(Question.id == question_id)).one_or_none()
+    if question is None:
+        raise HTTPException(404)
+    if question.quiz.user_id != jwt_payload.sub:
+        raise HTTPException(403)
+
+    response = prepare_question_response(question)
+    session.delete(question)
+    session.commit()
+    return response
