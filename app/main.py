@@ -8,6 +8,7 @@ from .api import users
 from .db.db import create_db_and_tables
 from .core import config
 from .api import quizzes
+from .api import questions
 
 
 @asynccontextmanager
@@ -20,6 +21,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(quizzes.router)
+app.include_router(questions.router)
 
 app.add_middleware(
     CORSMiddleware,
