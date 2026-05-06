@@ -6,8 +6,9 @@ from sqlmodel import select
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
 from ..db.db import SessionDep
-from ..models.questions import Question, QuestionResponse, QuestionData
+from ..models.questions import Question, QuestionResponse, QuestionData, QuestionUpload
 from ..models.quizzes import Quiz
+from ..models.answers import TestAnswer, TextAnswer
 
 router = APIRouter(
     prefix="/api/questions",
@@ -121,3 +122,48 @@ async def delete_question(
     session.delete(question)
     session.commit()
     return response
+
+
+@router.post(
+    "",
+    response_model=QuestionResponse,
+    responses={
+        404: {"description": "Quiz not found"},
+        403: {"description": "This quiz doesn't belong to you"}
+    },
+)
+async def add_question(
+        quiz_id: uuid.UUID,
+        question_upload: QuestionUpload,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    quiz: Quiz | None = session.exec(select(Quiz).where(Quiz.id == quiz_id)).one_or_none()
+    if quiz is None:
+        raise HTTPException(404)
+    if quiz.user_id != jwt_payload.sub:
+        raise HTTPException(403)
+
+    test_answers = []
+    text_answers = []
+
+    for ta in question_upload.test_answers:
+        test_answers.append(TestAnswer.model_validate({**ta.model_dump(by_alias=True)}))
+    for ta in question_upload.text_answers:
+        text_answers.append(TextAnswer.model_validate({**ta.model_dump(by_alias=True)}))
+
+    new_question = Question.model_validate({
+        **question_upload.model_dump(exclude={"test_answers", "text_answers"}, by_alias=True),
+        "testAnswers": [],
+        "textAnswers": [],
+    })
+    new_question.test_answers.extend(
+        [TestAnswer.model_validate(ta.model_dump(by_alias=True)) for ta in test_answers]
+    )
+    new_question.text_answers.extend(
+        [TextAnswer.model_validate(ta.model_dump(by_alias=True)) for ta in text_answers]
+    )
+    quiz.questions.append(new_question)
+    session.commit()
+    session.refresh(new_question)
+    return prepare_question_response(new_question)
