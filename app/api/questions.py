@@ -6,7 +6,7 @@ from sqlmodel import select
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
 from ..db.db import SessionDep
-from ..models.questions import Question, QuestionResponse
+from ..models.questions import Question, QuestionResponse, QuestionData
 from ..models.quizzes import Quiz
 
 router = APIRouter(
@@ -70,4 +70,29 @@ async def get_question(
     if question.quiz.user_id != jwt_payload.sub:
         raise HTTPException(403)
 
+    return prepare_question_response(question)
+
+
+@router.put(
+    "/{question_id}",
+    response_model=QuestionResponse,
+    responses={
+        404: {"description": "Question not found"},
+        403: {"description": "This question doesn't belong to you"}
+    }
+)
+async def edit_question_data(
+        question_id: uuid.UUID,
+        session: SessionDep,
+        update_data: QuestionData,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    question: Question | None = session.exec(select(Question).where(Question.id == question_id)).one_or_none()
+    if question is None:
+        raise HTTPException(404)
+    if question.quiz.user_id != jwt_payload.sub:
+        raise HTTPException(403)
+
+    question.sqlmodel_update(update_data)
+    session.commit()
     return prepare_question_response(question)
