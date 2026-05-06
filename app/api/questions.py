@@ -80,7 +80,8 @@ async def get_question(
     response_model=QuestionResponse,
     responses={
         404: {"description": "Question not found"},
-        403: {"description": "This question doesn't belong to you"}
+        403: {"description": "This question doesn't belong to you"},
+        400: {"description": "Bad request. Parse body to get more information"},
     }
 )
 async def edit_question_data(
@@ -136,7 +137,8 @@ async def delete_question(
     response_model=QuestionResponse,
     responses={
         404: {"description": "Quiz not found"},
-        403: {"description": "This quiz doesn't belong to you"}
+        403: {"description": "This quiz doesn't belong to you"},
+        400: {"description": "Bad request. Parse body to get more information"},
     },
 )
 async def add_question(
