@@ -4,7 +4,8 @@ from uuid import UUID, uuid4
 from pydantic import model_validator
 from sqlmodel import SQLModel, Field, Relationship
 
-from .questions import QuestionTypes, Question, QuestionResponse, QuestionUpload
+from .questions import Question, QuestionResponse, QuestionUpload
+from ..core.utils import validate_indexes_consistence
 
 if TYPE_CHECKING:
     from .user import User
@@ -44,63 +45,12 @@ class QuizUpload(QuizData):
 
     @model_validator(mode="after")
     def validate_quiz(self) -> Self:
-        def validate_indexes_consistence(indexes: set[int]):
-            indexes = sorted(indexes)
-            counter = 0
-            for i in indexes:
-                if i != counter:
-                    raise ValueError("Order indexes are inconsistent")
-                counter += 1
-
-        def validate_single_choice_question(question: QuestionUpload):
-            # There must be exactly one correct option
-            counter = 0
-            for a in question.test_answers:
-                counter += a.is_correct
-                if counter == 2:
-                    raise ValueError("Single choice question has more than one correct answer")
-            if counter == 0:
-                raise ValueError("Single choice question has no correct answers")
-
-        def validate_multiple_choice_question(question: QuestionUpload):
-            # There must be at least one correct option
-            for a in question.test_answers:
-                if a.is_correct:
-                    return
-            raise ValueError("Multiple choice question has no correct answers")
-
-        def validate_text_type_question(question: QuestionUpload):
-            # There must be at least one correct answer
-            if not len(question.text_answers):
-                raise ValueError("Text question has no answers")
-
-        # We validate that order indexes are unique and consistent. The same is for all test answers
+        # We validate that order indexes of the questions are unique and consistent
         question_indexes = set()
-
         for question in self.questions:
             if question.order_index in question_indexes:
                 raise ValueError("Order indexes of the questions are repeating")
             question_indexes.add(question.order_index)
-
-            # Quiz can't contain both test and text questions
-            if len(question.test_answers) and len(question.text_answers):
-                raise ValueError("Order indexes of the answers are repeating")
-
-            if len(question.test_answers):
-                # Check that the order indexes are valid
-                answer_indexes = set()
-                for q in question.test_answers:
-                    if q.order_index in answer_indexes:
-                        return False, "Order indexes are repeating"
-                    answer_indexes.add(q.order_index)
-                validate_indexes_consistence(answer_indexes)
-
-            if question.type == QuestionTypes.SINGLE_CHOICE:
-                validate_single_choice_question(question)
-            elif question.type == QuestionTypes.MULTIPLE_CHOICE:
-                validate_multiple_choice_question(question)
-            elif question.type == QuestionTypes.TEXT:
-                validate_text_type_question(question)
 
         validate_indexes_consistence(question_indexes)
         return self
