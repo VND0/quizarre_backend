@@ -22,12 +22,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{answer_id}", response_model=AnswerResponse)
-async def get_answer(
-        answer_id: uuid.UUID,
-        session: SessionDep,
-        jwt_payload: JwtPayload = Depends(verify_jwt),
-):
+def get_some_answer(answer_id: uuid.UUID, session: SessionDep, jwt_payload: JwtPayload) -> TestAnswer | TextAnswer:
     answer: TestAnswer | None = session.exec(select(TestAnswer).where(TestAnswer.id == answer_id)).one_or_none()
     if answer is None:
         answer: TextAnswer | None = session.exec(select(TextAnswer).where(TextAnswer.id == answer_id)).one_or_none()
@@ -36,14 +31,23 @@ async def get_answer(
         raise HTTPException(404)
     if answer.question.quiz.user_id != jwt_payload.sub:
         raise HTTPException(403)
+    return answer
 
+
+@router.get("/{answer_id}", response_model=AnswerResponse)
+async def get_answer(
+        answer_id: uuid.UUID,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    answer = get_some_answer(answer_id, session, jwt_payload)
     return AnswerResponse.model_validate({
         "questionType": answer.question.type,
         "answer": {**answer.model_dump(by_alias=True, exclude={"question"})}
     })
 
 
-def get_question(question_id: uuid.UUID, session: SessionDep, jwt_payload: JwtPayload):
+def get_question(question_id: uuid.UUID, session: SessionDep, jwt_payload: JwtPayload) -> Question:
     question: Question | None = session.exec(select(Question).where(Question.id == question_id)).one_or_none()
     if question is None:
         raise HTTPException(404)
@@ -96,4 +100,30 @@ async def add_text_answer(
     return AnswerResponse.model_validate({
         "questionType": question.type,
         "answer": {**new_answer.model_dump(by_alias=True, exclude={"question"})}
+    })
+
+
+@router.put("/{answer_id}", response_model=AnswerResponse)
+async def modify_answer(
+        answer_id: uuid.UUID,
+        session: SessionDep,
+        answer_data: TestAnswerData | TextAnswerData,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    answer = get_some_answer(answer_id, session, jwt_payload)
+
+    if not issubclass(type(answer), type(answer_data)):
+        raise HTTPException(400, "Answer types don't match")
+
+    answer.sqlmodel_update(answer_data)
+
+    try:
+        validate_answers(answer.question)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    session.commit()
+    return AnswerResponse.model_validate({
+        "questionType": answer.question.type,
+        "answer": {**answer.model_dump(by_alias=True, exclude={"question"})}
     })
