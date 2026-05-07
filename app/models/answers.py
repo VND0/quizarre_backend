@@ -2,6 +2,8 @@ from sqlmodel import SQLModel, Field, Relationship
 from uuid import UUID, uuid4
 from typing import TYPE_CHECKING
 
+from ..core.constants import QuestionTypes
+
 if TYPE_CHECKING:
     from .questions import Question
 
@@ -32,3 +34,8 @@ class BaseTextAnswer(TextAnswerData):
 
 class TextAnswer(BaseTextAnswer, table=True):
     question: Question = Relationship(back_populates="text_answers")
+
+
+class AnswerResponse(SQLModel):
+    question_type: QuestionTypes = Field(alias="questionType")
+    answer: TestAnswer | TextAnswer

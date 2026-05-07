@@ -3,12 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import auth
-from .api import users
 from .db.db import create_db_and_tables
 from .core import config
-from .api import quizzes
-from .api import questions
+from .api import quizzes, questions, auth, users, answers
 
 
 @asynccontextmanager
@@ -22,6 +19,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(quizzes.router)
 app.include_router(questions.router)
+app.include_router(answers.router)
 
 app.add_middleware(
     CORSMiddleware,
