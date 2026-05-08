@@ -28,8 +28,8 @@ class BaseQuestion(QuestionData):
 class Question(BaseQuestion, table=True):
     quiz: Quiz = Relationship(back_populates="questions")
 
-    test_answers: list["TestAnswer"] = Relationship(back_populates="question")
-    text_answers: list["TextAnswer"] = Relationship(back_populates="question")
+    test_answers: list["TestAnswer"] = Relationship(back_populates="question", cascade_delete=True)
+    text_answers: list["TextAnswer"] = Relationship(back_populates="question", cascade_delete=True)
 
 
 class QuestionResponse(BaseQuestion):

@@ -33,7 +33,7 @@ class BaseQuiz(QuizData):
 
 class Quiz(BaseQuiz, table=True):
     user: "User" = Relationship(back_populates="quizzes")
-    questions: list["Question"] = Relationship(back_populates="quiz")
+    questions: list["Question"] = Relationship(back_populates="quiz", cascade_delete=True)
 
 
 class FullQuizResponse(BaseQuiz):

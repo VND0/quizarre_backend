@@ -37,8 +37,8 @@ class User(BaseUser, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     password_hash: str = Field(exclude=True)
 
-    opaque_tokens: list["OpaqueToken"] = Relationship(back_populates="user")
-    quizzes: list["Quiz"] = Relationship(back_populates="user")
+    opaque_tokens: list["OpaqueToken"] = Relationship(back_populates="user", cascade_delete=True)
+    quizzes: list["Quiz"] = Relationship(back_populates="user", cascade_delete=True)
 
 
 class OpaqueToken(SQLModel, table=True):
