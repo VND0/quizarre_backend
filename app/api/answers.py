@@ -34,6 +34,13 @@ def get_some_answer(answer_id: uuid.UUID, session: SessionDep, jwt_payload: JwtP
     return answer
 
 
+def prepare_answer_response(answer: TestAnswer | TextAnswer):
+    return AnswerResponse.model_validate({
+        "questionType": answer.question.type,
+        "answer": {**answer.model_dump(by_alias=True, exclude={"question"})}
+    })
+
+
 @router.get("/{answer_id}", response_model=AnswerResponse)
 async def get_answer(
         answer_id: uuid.UUID,
@@ -41,10 +48,7 @@ async def get_answer(
         jwt_payload: JwtPayload = Depends(verify_jwt),
 ):
     answer = get_some_answer(answer_id, session, jwt_payload)
-    return AnswerResponse.model_validate({
-        "questionType": answer.question.type,
-        "answer": {**answer.model_dump(by_alias=True, exclude={"question"})}
-    })
+    return prepare_answer_response(answer)
 
 
 def get_question(question_id: uuid.UUID, session: SessionDep, jwt_payload: JwtPayload) -> Question:
@@ -74,11 +78,7 @@ async def add_test_answer(
 
     session.commit()
     session.refresh(new_answer)
-    return AnswerResponse.model_validate({
-        "questionType": question.type,
-        "answer": {**new_answer.model_dump(by_alias=True, exclude={"question"})}
-    })
-
+    return prepare_answer_response(new_answer)
 
 @router.post("/new-text/{question_id}", response_model=AnswerResponse)
 async def add_text_answer(
@@ -97,10 +97,7 @@ async def add_text_answer(
         raise HTTPException(400, str(e))
 
     session.commit()
-    return AnswerResponse.model_validate({
-        "questionType": question.type,
-        "answer": {**new_answer.model_dump(by_alias=True, exclude={"question"})}
-    })
+    return prepare_answer_response(new_answer)
 
 
 @router.put("/{answer_id}", response_model=AnswerResponse)
@@ -123,7 +120,32 @@ async def modify_answer(
         raise HTTPException(400, str(e))
 
     session.commit()
-    return AnswerResponse.model_validate({
-        "questionType": answer.question.type,
-        "answer": {**answer.model_dump(by_alias=True, exclude={"question"})}
-    })
+    return prepare_answer_response(answer)
+
+
+@router.delete("/{answer_id}", response_model=AnswerResponse)
+async def delete_answer(
+        answer_id: uuid.UUID,
+        session: SessionDep,
+        jwt_payload: JwtPayload = Depends(verify_jwt),
+):
+    answer = get_some_answer(answer_id, session, jwt_payload)
+    response = prepare_answer_response(answer)
+
+    question = answer.question
+    if type(answer) is TestAnswer:
+        answers = question.test_answers
+    elif type(answer) is TextAnswer:
+        answers = question.text_answers
+    else:
+        raise HTTPException(500, "Server couldn't recognize the type of this answer")
+    answers.remove(answer)
+    session.delete(answer)
+
+    try:
+        validate_answers(question)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    session.commit()
+    return response
