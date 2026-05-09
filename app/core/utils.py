@@ -5,6 +5,7 @@ from ..core.constants import QuestionTypes
 if TYPE_CHECKING:
     from ..models.quizzes import QuizUpload, Quiz
     from ..models.questions import QuestionUpload, Question
+    from ..models.answers import TestAnswer
 
 
 def validate_indexes_consistence(indexes: set[int]):
@@ -74,3 +75,9 @@ def validate_text_type_question(question: QuestionUpload):
     # There must be at least one correct answer
     if not len(question.text_answers):
         raise ValueError("Text question has no answers")
+
+
+def move_order_indexes(objects: list[Question | TestAnswer], ge: int, decrement=False):
+    for obj in objects:
+        if obj.order_index >= ge:
+            obj.order_index += 1 if not decrement else -1

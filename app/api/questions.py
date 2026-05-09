@@ -5,11 +5,11 @@ from sqlmodel import select
 
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
-from ..core.utils import validate_questions_indexes, validate_answers
+from ..core.utils import validate_questions_indexes, validate_answers, move_order_indexes
 from ..db.db import SessionDep
+from ..models.answers import TestAnswer, TextAnswer
 from ..models.questions import Question, QuestionResponse, QuestionData, QuestionUpload
 from ..models.quizzes import Quiz
-from ..models.answers import TestAnswer, TextAnswer
 
 router = APIRouter(
     prefix="/api/questions",
@@ -96,7 +96,14 @@ async def edit_question_data(
     if question.quiz.user_id != jwt_payload.sub:
         raise HTTPException(403)
 
+    quiz = question.quiz
+    quiz.questions.remove(question)
+    move_order_indexes(quiz.questions, ge=question.order_index, decrement=True)
+
     question.sqlmodel_update(update_data)
+
+    move_order_indexes(quiz.questions, ge=question.order_index)
+    quiz.questions.append(question)
 
     try:
         validate_questions_indexes(question.quiz)
@@ -125,8 +132,17 @@ async def delete_question(
         raise HTTPException(404)
     if question.quiz.user_id != jwt_payload.sub:
         raise HTTPException(403)
-
     response = prepare_question_response(question)
+
+    quiz = question.quiz
+    quiz.questions.remove(question)
+    move_order_indexes(quiz.questions, ge=question.order_index, decrement=True)
+
+    try:
+        validate_questions_indexes(quiz)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
     session.delete(question)
     session.commit()
     return response
@@ -175,7 +191,10 @@ async def add_question(
 
     try:
         validate_answers(new_question)
+
+        move_order_indexes(quiz.questions, ge=new_question.order_index)
         quiz.questions.append(new_question)
+
         validate_questions_indexes(quiz)
     except ValueError as e:
         raise HTTPException(400, str(e))
