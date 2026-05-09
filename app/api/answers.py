@@ -5,7 +5,7 @@ from sqlmodel import select
 
 from ..core.models import JwtPayload
 from ..core.security import verify_jwt
-from ..core.utils import validate_answers
+from ..core.utils import validate_answers, move_order_indexes
 from ..db.db import SessionDep
 from ..models.answers import TestAnswer, TextAnswer, AnswerResponse, TestAnswerData, TextAnswerData
 from ..models.questions import Question
@@ -69,6 +69,8 @@ async def add_test_answer(
 ):
     question = get_question(question_id, session, jwt_payload)
     new_answer = TestAnswer.model_validate({**answer_data.model_dump(by_alias=True)})
+
+    move_order_indexes(question.test_answers, ge=new_answer.order_index)
     question.test_answers.append(new_answer)
 
     try:
@@ -79,6 +81,7 @@ async def add_test_answer(
     session.commit()
     session.refresh(new_answer)
     return prepare_answer_response(new_answer)
+
 
 @router.post("/new-text/{question_id}", response_model=AnswerResponse)
 async def add_text_answer(
@@ -112,7 +115,14 @@ async def modify_answer(
     if not issubclass(type(answer), type(answer_data)):
         raise HTTPException(400, "Answer types don't match")
 
+    old_order_index = answer.order_index
     answer.sqlmodel_update(answer_data)
+    if type(answer) is TestAnswer:
+        question = answer.question
+        question.test_answers.remove(answer)
+        move_order_indexes(question.test_answers, ge=old_order_index, decrement=True)
+        move_order_indexes(question.test_answers, ge=answer.order_index)
+        question.test_answers.append(answer)
 
     try:
         validate_answers(answer.question)
@@ -135,6 +145,7 @@ async def delete_answer(
     question = answer.question
     if type(answer) is TestAnswer:
         answers = question.test_answers
+        move_order_indexes(answers, ge=answer.order_index, decrement=True)
     elif type(answer) is TextAnswer:
         answers = question.text_answers
     else:
