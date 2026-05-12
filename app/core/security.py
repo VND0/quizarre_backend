@@ -51,6 +51,10 @@ def create_access_token(user: user.User) -> str:
 
 def verify_jwt(credentials: HTTPAuthorizationCredentials = Security(auth_scheme)) -> JwtPayload:
     token = credentials.credentials
+    return get_jwt_payload(token)
+
+
+def get_jwt_payload(token: str):
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         return JwtPayload(**payload)

@@ -11,4 +11,5 @@ dependencies = [
     "pyjwt>=2.12.1",
     "sqlmodel>=0.0.38",
     "uvicorn>=0.43.0",
+    "websockets>=16.0",
 ]
