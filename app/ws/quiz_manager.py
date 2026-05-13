@@ -1,7 +1,9 @@
+import json
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import WebSocket
+from pydantic import BaseModel, ValidationError, Field
 
 if TYPE_CHECKING:
     from ..models.questions import Quiz
@@ -9,21 +11,55 @@ if TYPE_CHECKING:
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        self.active_connections: dict[int, WebSocket] = {}
+        self._index_counter = -1
+
+    @property
+    def index_counter(self):
+        self._index_counter += 1
+        return self._index_counter
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        index = self.index_counter
+        self.active_connections[index] = websocket
+        return index
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, target: int, code: int = 1000, reason: str | None = None):
+        connection = self.active_connections.pop(target)
+        connection.close(code, reason)
 
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
+    async def send_personal_message(self, message: BaseModel, target: int):
+        connection = self.active_connections[target]
+        await connection.send_json(message.model_dump(by_alias=True, mode="json"))
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+    async def broadcast(self, message: BaseModel):
+        message_content = message.model_dump(by_alias=True, mode="json")
+        for connection in self.active_connections.values():
+            await connection.send_json(message_content)
+
+
+class AdminAction(Enum):
+    RUN = "run"
+    INTERRUPT = "interrupt"
+    BAN = "ban"
+
+
+class AdminRequest(BaseModel):
+    action: AdminAction
+    target: int | None
+
+
+class WSResponse(BaseModel):
+    type: WSResponseType
+    error_code: int | None = Field(alias="errorCode", default=None)
+    details: Any
+
+
+class WSResponseType(Enum):
+    ERROR = "error"
+    SUCCESS = "success"
+    MESSAGE = "message"
 
 
 class QuizState(Enum):
@@ -31,6 +67,15 @@ class QuizState(Enum):
     IN_GAME = "in_game"
     FINISHED = "finished"
     INTERRUPTED = "interrupted"
+
+
+async def send_error(target: WebSocket, code: int, details: Any):
+    data = WSResponse.model_validate({
+        "type": "error",
+        "errorCode": code,
+        "details": details
+    })
+    await target.send_json(data.model_dump(by_alias=True, mode="json"))
 
 
 class QuizFlow:
@@ -41,28 +86,49 @@ class QuizFlow:
         self.quiz = quiz
 
     async def handle_admin_requests(self):
-        pass
+        while True:
+            if self.state in (QuizState.FINISHED, QuizState.INTERRUPTED):
+                break
+            try:
+                text = await self.admin.receive_text()
+                data = AdminRequest.model_validate(json.loads(text))
+            except json.JSONDecodeError:
+                await send_error(self.admin, 400, "Expected JSON, but got plain text")
+                continue
+            except ValidationError as e:
+                await send_error(self.admin, 422, e.errors())
+                continue
 
-    async def handle_participants_requests(self):
-        pass
+            if data.action == AdminAction.RUN:
+                await self.run()
+            elif data.action == AdminAction.BAN:
+                await self.ban(data.target)
+            elif data.action == AdminAction.INTERRUPT:
+                await self.interrupt()
 
     async def run(self):
         pass
 
-    async def ban(self, user: WebSocket):
-        pass
+    async def ban(self, target: int | None):
+        if target is None:
+            await send_error(self.admin, 400, "Target not specified")
+            return
+        try:
+            self.participants.disconnect(target)
+        except KeyError:
+            await send_error(self.admin, 400, "Target not found")
+            return
+
+        await self.admin.send_json(WSResponse.model_validate({
+            "type": WSResponseType.SUCCESS,
+            "details": target
+        }).model_dump(by_alias=True, mode="json"))
 
     async def interrupt(self):
         pass
 
-    async def get_stats(self):
+    async def get_admin_stats(self):
         pass
 
-
-class NoParticipantsException(Exception): pass
-
-
-class QuizWasInterrupted(Exception): pass
-
-
-class ParticipantNotFound(Exception): pass
+    async def handle_participants_requests(self):
+        pass

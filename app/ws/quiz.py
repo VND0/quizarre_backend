@@ -48,7 +48,7 @@ async def run_quiz(
     quiz_flow = QuizFlow(quiz=quiz, admin=websocket)
     code = get_quiz_code()
     quizzes[code] = quiz_flow
-    await quiz_flow.handle_requests()
+    await quiz_flow.handle_admin_requests()
 
 
 @router.websocket("/join-quiz")
